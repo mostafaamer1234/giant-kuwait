@@ -1,0 +1,18 @@
+import Link from "next/link";
+import {headers} from "next/headers";
+import {redirect} from "next/navigation";
+import {AdminDetailFrame} from "@/components/AdminDetailFrame";
+import {getAdminSession} from "@/lib/admin-auth";
+import {readAdminStore} from "@/lib/admin-store";
+import {getStripeAccountStatus} from "@/lib/stripe";
+
+export const dynamic="force-dynamic";
+export default async function PaymentConnections(){if(!await getAdminSession())redirect("/admin/login");const store=await readAdminStore();const stripe=await getStripeAccountStatus();const requestHeaders=await headers();const origin=process.env.PUBLIC_SITE_ORIGIN||`${requestHeaders.get("x-forwarded-proto")||"https"}://${requestHeaders.get("host")}`;const mfConfigured=Boolean(process.env.MYFATOORAH_API_TOKEN);const mfLive=Boolean(process.env.MYFATOORAH_API_URL?.includes("api.myfatoorah.com"));return <AdminDetailFrame section="Payments" title="Payment connections" eyebrow="SECURE COMMERCE">
+  <div className="payment-connection-grid">
+    <article className="payment-connection-card"><div><span className={`connection-light ${stripe.account?.chargesEnabled?"connected":""}`}/><small>{stripe.account?.chargesEnabled?"CONNECTED":stripe.configured?"NEEDS ATTENTION":"CREDENTIALS REQUIRED"}</small></div><h2>STRIPE</h2><p>Hosted Checkout for cards, eligible wallets, 3-D Secure, receipts, and Stripe-managed payment methods.</p><dl><div><dt>Mode</dt><dd>{stripe.mode??"Not configured"}</dd></div><div><dt>Account</dt><dd>{stripe.account?.id??"—"}</dd></div><div><dt>Charges</dt><dd>{stripe.account?.chargesEnabled?"Enabled":"Unavailable"}</dd></div><div><dt>Store switch</dt><dd>{store.settings.stripeEnabled?"On":"Off"}</dd></div></dl><Link href="/admin/settings/stripe">OPEN STRIPE DETAILS →</Link></article>
+    <article className="payment-connection-card"><div><span className={`connection-light ${mfConfigured?"connected":""}`}/><small>{mfConfigured?mfLive?"LIVE CREDENTIAL PRESENT":"TEST CREDENTIAL PRESENT":"CREDENTIALS REQUIRED"}</small></div><h2>MYFATOORAH</h2><p>Kuwait payment sessions for KNET, cards, and eligible Apple Pay accounts.</p><dl><div><dt>Mode</dt><dd>{mfConfigured?mfLive?"Live":"Test":"Not configured"}</dd></div><div><dt>Token</dt><dd>{mfConfigured?"Server-side ✓":"Missing"}</dd></div><div><dt>Webhook secret</dt><dd>{process.env.MYFATOORAH_WEBHOOK_SECRET?"Present ✓":"Missing"}</dd></div><div><dt>Store switch</dt><dd>{store.settings.myFatoorahEnabled?"On":"Off"}</dd></div></dl><a href="https://portal.myfatoorah.com" target="_blank" rel="noreferrer">OPEN MYFATOORAH PORTAL ↗</a></article>
+    <article className="payment-connection-card"><div><span className={`connection-light ${store.settings.codEnabled?"connected":""}`}/><small>{store.settings.codEnabled?"AVAILABLE":"DISABLED"}</small></div><h2>CASH ON DELIVERY</h2><p>Manual payment collection attached to the existing Kuwait fulfillment workflow.</p><dl><div><dt>External account</dt><dd>Not required</dd></div><div><dt>Store switch</dt><dd>{store.settings.codEnabled?"On":"Off"}</dd></div></dl><Link href="/admin?tab=Settings">MANAGE IN SETTINGS →</Link></article>
+  </div>
+  <section className="detail-card payment-webhooks"><h2>WEBHOOK ENDPOINTS</h2><p>Add these exact URLs in the provider dashboards. Payment completion remains webhook-authoritative.</p><code>{origin}/api/v1/webhooks/stripe</code><code>{origin}/api/v1/webhooks/myfatoorah</code></section>
+  <p className="payment-security-note">Secrets are read only from encrypted Vercel environment variables. They are never returned to this page, stored in Blob, or exposed to the browser.</p>
+  </AdminDetailFrame>}

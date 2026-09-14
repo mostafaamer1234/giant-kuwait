@@ -1,0 +1,4 @@
+import type {AdminPromotion,AdminStore} from './admin-store';
+
+export function findEligiblePromotion(store:AdminStore,code:string|undefined,subtotal:number):AdminPromotion|undefined{if(!code)return;const now=Date.now();return store.promotions.find(item=>item.active&&item.code.toUpperCase()===code.trim().toUpperCase()&&(!item.startAt||new Date(item.startAt).getTime()<=now)&&(!item.endAt||new Date(item.endAt).getTime()>=now)&&(!item.minimumSpendFils||subtotal>=item.minimumSpendFils)&&(!item.usageLimit||(item.uses??0)<item.usageLimit))}
+export function pricePromotion(promotion:AdminPromotion|undefined,subtotal:number,delivery:number){if(!promotion)return{discount:0,delivery,promotionId:undefined,promotionCode:undefined};const freeDelivery=promotion.discount===0;return{discount:freeDelivery?0:Math.round(subtotal*promotion.discount/100),delivery:freeDelivery?0:delivery,promotionId:promotion.id,promotionCode:promotion.code}}

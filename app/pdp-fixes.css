@@ -1,0 +1,11 @@
+.swatch{width:24px;height:24px;margin-left:10px;transition:transform .15s,outline-width .15s}
+.swatch:hover{transform:scale(1.12)}
+.swatch.selected{outline:2px solid var(--ink);outline-offset:2px}
+.swatch.burnt-orange{background:var(--accent)}
+.quantity-row{display:flex;align-items:center;justify-content:space-between;margin-top:22px;font:700 11px var(--font-display);letter-spacing:.04em}
+.quantity-control{display:grid;grid-template-columns:42px 48px 42px;border:1px solid #bfc3c7;background:#fff}
+.quantity-control button,.quantity-control input{height:42px;border:0;background:#fff;text-align:center;font-weight:700}
+.quantity-control button{font-size:19px;cursor:pointer}
+.quantity-control button:disabled{color:#aaa;cursor:not-allowed}
+.quantity-control input{width:48px;border-left:1px solid #d5d7d9;border-right:1px solid #d5d7d9;-moz-appearance:textfield}
+.quantity-control input::-webkit-outer-spin-button,.quantity-control input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}

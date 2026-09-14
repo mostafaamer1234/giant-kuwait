@@ -1,0 +1,7 @@
+import {put} from '@vercel/blob';
+import {NextRequest,NextResponse} from 'next/server';
+import {getAdminSession} from '@/lib/admin-auth';
+
+export const runtime='nodejs';
+const allowed=new Set(['image/jpeg','image/png','image/webp','image/avif']);
+export async function POST(request:NextRequest){if(!await getAdminSession())return NextResponse.json({code:'UNAUTHORIZED',message:'Sign in required'},{status:401});const origin=request.headers.get('origin');if(origin&&origin!==request.nextUrl.origin)return NextResponse.json({code:'INVALID_ORIGIN',message:'Invalid request origin'},{status:403});const data=await request.formData();const file=data.get('file');if(!(file instanceof File))return NextResponse.json({code:'FILE_REQUIRED',message:'Choose an image to upload.'},{status:400});if(!allowed.has(file.type))return NextResponse.json({code:'INVALID_FILE',message:'Use a JPEG, PNG, WebP, or AVIF image.'},{status:400});if(file.size>6*1024*1024)return NextResponse.json({code:'FILE_TOO_LARGE',message:'Images must be 6 MB or smaller.'},{status:413});if(!process.env.BLOB_READ_WRITE_TOKEN){const base64=Buffer.from(await file.arrayBuffer()).toString('base64');return NextResponse.json({data:{url:`data:${file.type};base64,${base64}`}})}const safe=file.name.toLowerCase().replace(/[^a-z0-9.]+/g,'-').slice(-80);const pathname=`giant/product-media/${crypto.randomUUID()}-${safe}`;await put(pathname,file,{access:'private',contentType:file.type,addRandomSuffix:false});return NextResponse.json({data:{url:`/api/v1/media?path=${encodeURIComponent(pathname)}`}})}

@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default async function MyFatoorahResult({params}:{params:Promise<{locale:string}>}){const {locale}=await params;return <main className="order-success" dir={locale==="ar"?"rtl":"ltr"}><span className="success-ring">G</span><p>MYFATOORAH PAYMENT</p><h1>{locale==="ar"?"جارٍ تأكيد الدفع.":"CONFIRMING PAYMENT."}</h1><p>We are checking the signed provider notification. Your order status updates automatically when payment is confirmed.</p><Link className="btn dark" href={`/${locale}`}>BACK TO GIANT</Link></main>}

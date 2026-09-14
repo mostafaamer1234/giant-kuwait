@@ -1,0 +1,3 @@
+import {notFound} from "next/navigation";
+import {MyFatoorahPayment} from "@/components/MyFatoorahPayment";
+export default async function MyFatoorahPage({params,searchParams}:{params:Promise<{locale:string}>;searchParams:Promise<{session_id?:string}>}){const {locale}=await params;const query=await searchParams;if(!query.session_id||!['en','ar'].includes(locale))notFound();const scriptUrl=(process.env.MYFATOORAH_API_URL||"").includes("apitest")?"https://demo.myfatoorah.com/sessions/v1/session.js":"https://portal.myfatoorah.com/sessions/v1/session.js";return <MyFatoorahPayment sessionId={query.session_id} scriptUrl={scriptUrl} locale={locale}/>}

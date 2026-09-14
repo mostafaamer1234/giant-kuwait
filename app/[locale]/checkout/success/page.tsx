@@ -1,0 +1,6 @@
+import Link from "next/link";
+import {notFound} from "next/navigation";
+import {getStripe,reconcileStripeSession} from "@/lib/stripe";
+
+export const dynamic="force-dynamic";
+export default async function StripeSuccess({params,searchParams}:{params:Promise<{locale:string}>;searchParams:Promise<{session_id?:string}>}){const {locale}=await params;if(locale!=="en"&&locale!=="ar")notFound();const {session_id}=await searchParams;let order=null;if(session_id&&process.env.STRIPE_SECRET_KEY){try{const session=await getStripe().checkout.sessions.retrieve(session_id);order=await reconcileStripeSession(session,"checkout.session.completed")}catch{}}return <main className="order-success" dir={locale==="ar"?"rtl":"ltr"}><span className="success-ring">G</span><p>{order?`ORDER ${order.number}`:"PAYMENT STATUS"}</p><h1>{order?.paymentStatus==="paid"?(locale==="ar"?"تم الدفع بنجاح.":"PAYMENT COMPLETE."):(locale==="ar"?"جارٍ تأكيد الدفع.":"CONFIRMING PAYMENT.")}</h1><p>{order?.paymentStatus==="paid"?"Your payment is confirmed and the order is moving to processing.":"We are securely reconciling your payment. Your order will update automatically."}</p><Link className="btn dark" href={`/${locale}`}>BACK TO GIANT</Link></main>}

@@ -1,0 +1,7 @@
+"use client";
+import Script from "next/script";
+import {Mark} from "@/components/StoreClient";
+import Link from "next/link";
+import {useState} from "react";
+declare global{interface Window{myfatoorah?:{init:(config:{sessionId:string;callback:(response:unknown)=>void;containerId:string;shouldHandlePaymentUrl:boolean})=>void}}}
+export function MyFatoorahPayment({sessionId,scriptUrl,locale}:{sessionId:string;scriptUrl:string;locale:string}){const [error,setError]=useState("");const initialize=()=>{if(!window.myfatoorah)return setError("Payment library could not be loaded.");window.myfatoorah.init({sessionId,containerId:"giant-myfatoorah",shouldHandlePaymentUrl:true,callback:()=>window.location.assign(`/${locale}/checkout/myfatoorah/result?sessionId=${encodeURIComponent(sessionId)}`)})};return <main className="provider-checkout"><Script src={scriptUrl} strategy="afterInteractive" onLoad={initialize} onError={()=>setError("Payment library could not be loaded.")}/><header><Link href={`/${locale}`} className="brand"><Mark/><b>GIANT</b></Link><p>SECURE PAYMENT · MYFATOORAH</p></header><section><div><p className="eyebrow">KNET · CARD · APPLE PAY</p><h1>COMPLETE PAYMENT.</h1><p>Your payment details are handled securely by MyFatoorah. GIANT never stores card numbers.</p>{error&&<p className="checkout-error">{error}</p>}</div><div id="giant-myfatoorah" className="myfatoorah-container"/></section></main>}
