@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { AddToCart, ProductCard, Shell, WishlistButton } from "@/components/StoreClient";
 import { SizeAssistant } from "@/components/SizeAssistant";
+import {MetaProductView} from '@/components/MetaPixel';
 import { money, type Locale } from "@/lib/catalog";
 import { getCatalogProducts,getPublicSettings } from "@/lib/catalog-store";
 export async function generateMetadata({
@@ -40,13 +41,14 @@ export default async function ProductPage({
   const p = products.find((x) => x.slug === slug);
   if (!p) notFound();
   const colours = products.filter((x) => x.name === p.name);
+  const gallery=Array.from(new Set([...(p.images||[]),p.image].filter(Boolean)));
   const assistantEnabled = settings.sizeAssistantEnabled;
   return (
     <Shell locale={locale}>
       <main className="pdp">
-        <div className="pdp-gallery">
-          <div style={{ backgroundImage: `url(${p.image})` }} />
-          <div style={{ backgroundImage: `url(${p.image})` }} />
+        <MetaProductView product={p}/>
+        <div className={`pdp-gallery${gallery.length===1?' single':''}`}>
+          {gallery.map((image,index)=><div key={`${image}-${index}`} style={{ backgroundImage: `url(${image})` }} />)}
         </div>
         <div className="pdp-info">
           <p className="breadcrumbs">

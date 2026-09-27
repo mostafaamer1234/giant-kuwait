@@ -6,6 +6,8 @@ import { FiHeart, FiMenu, FiShoppingBag, FiUser } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import type { Locale, Product } from "@/lib/catalog";
 import { money } from "@/lib/catalog";
+import {bundleForQuantity,productLineTotal} from '@/lib/catalog';
+import {sendMetaEvent} from '@/components/MetaPixel';
 
 export type CartLine = { id: string; size: string; qty: number };
 const cartKey = "giant-cart";
@@ -27,12 +29,12 @@ export function useCart() {
   return {
     lines,
     add: (id: string, size: string, quantity = 1) => {
-      const qty = Math.max(1, Math.min(10, quantity));
+      const qty = Math.max(1, Math.min(50, quantity));
       const hit = lines.find((x) => x.id === id && x.size === size);
       save(
         hit
           ? lines.map((x) =>
-              x === hit ? { ...x, qty: Math.min(10, x.qty + qty) } : x,
+              x === hit ? { ...x, qty: Math.min(50, x.qty + qty) } : x,
             )
           : [...lines, { id, size, qty }],
       );
@@ -43,7 +45,7 @@ export function useCart() {
           ? lines.filter((x) => !(x.id === id && x.size === size))
           : lines.map((x) =>
               x.id === id && x.size === size
-                ? { ...x, qty: Math.min(10, qty) }
+                ? { ...x, qty: Math.min(50, qty) }
                 : x,
             ),
       ),
@@ -293,6 +295,7 @@ export function AddToCart({
   const [message, setMessage] = useState("");
   const cart = useCart();
   const ar = locale === "ar";
+  const selectedBundle=bundleForQuantity(product,quantity);
   useEffect(() => {
     const apply = (event: Event) => {
       const detail = (event as CustomEvent<{ productId: string; size: string }>)
@@ -368,24 +371,25 @@ export function AddToCart({
             aria-label={ar ? "الكمية" : "Quantity"}
             inputMode="numeric"
             min="1"
-            max="10"
+            max="50"
             value={quantity}
             onChange={(e) =>
               setQuantity(
-                Math.max(1, Math.min(10, Number(e.target.value) || 1)),
+                Math.max(1, Math.min(50, Number(e.target.value) || 1)),
               )
             }
           />
           <button
             type="button"
             aria-label={ar ? "زيادة الكمية" : "Increase quantity"}
-            disabled={quantity === 10}
-            onClick={() => setQuantity((q) => Math.min(10, q + 1))}
+            disabled={quantity === 50}
+            onClick={() => setQuantity((q) => Math.min(50, q + 1))}
           >
             +
           </button>
         </div>
       </div>
+      {!!product.bundles?.length&&<div className="bundle-options"><b>{ar?'عروض الكمية':'MULTI-BUY PACKAGES'}</b><p>{ar?'اختر العرض المناسب وسيتم تطبيق سعره تلقائياً.':'Choose a package and its discounted total will apply automatically.'}</p><div>{product.bundles.map(bundle=><button type="button" className={quantity===bundle.quantity?'active':''} onClick={()=>setQuantity(bundle.quantity)} key={bundle.id}><strong>{ar?`${bundle.quantity} قطع`:`${bundle.quantity} ITEMS`}</strong><span>{money(bundle.price,locale)}</span><small>{money(Math.round(bundle.price/bundle.quantity),locale)} {ar?'للقطعة':'each'}</small></button>)}</div></div>}
       <button
         className="add-button"
         onClick={() => {
@@ -394,6 +398,7 @@ export function AddToCart({
             return;
           }
           cart.add(product.id, size, quantity);
+          sendMetaEvent('AddToCart',{productId:product.id,productName:product.name,quantity,valueFils:productLineTotal(product,quantity)});
           setMessage(
             ar
               ? `تمت إضافة ${quantity} إلى السلة`
@@ -401,8 +406,9 @@ export function AddToCart({
           );
         }}
       >
-        {ar ? "أضف إلى السلة" : `ADD ${quantity} TO BAG`}
+        {ar ? `أضف إلى السلة · ${money(productLineTotal(product,quantity),locale)}` : `ADD ${quantity} TO BAG · ${money(productLineTotal(product,quantity),locale)}`}
       </button>
+      {selectedBundle&&<p className="bundle-saving">{ar?'تم تطبيق عرض':'PACKAGE APPLIED'}: {selectedBundle.label}</p>}
       <p role="status" className="status-message">
         {message}
       </p>

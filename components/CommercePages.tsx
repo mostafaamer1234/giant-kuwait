@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { money, type Locale, type Product } from "@/lib/catalog";
+import { bundleForQuantity,money,productLineTotal,type Locale,type Product } from "@/lib/catalog";
 import { Mark,useCart } from "./StoreClient";
+import {sendMetaEvent} from '@/components/MetaPixel';
 export function CartView({
   locale,
   products,
@@ -16,7 +17,7 @@ export function CartView({
   const rows = cart.lines
     .map((l) => ({ ...l, product: products.find((p) => p.id === l.id)! }))
     .filter((x) => x.product);
-  const subtotal = rows.reduce((a, x) => a + x.product.price * x.qty, 0);
+  const subtotal = rows.reduce((a, x) => a + productLineTotal(x.product,x.qty), 0);
   return (
     <main className="commerce-page">
       <div className="commerce-title">
@@ -42,7 +43,7 @@ export function CartView({
                   <p>
                     {x.product.color} · {x.size}
                   </p>
-                  <strong>{money(x.product.price, locale)}</strong>
+                  <strong>{money(productLineTotal(x.product,x.qty), locale)}{bundleForQuantity(x.product,x.qty)&&<small> · {bundleForQuantity(x.product,x.qty)?.label}</small>}</strong>
                   <div className="qty">
                     <button
                       type="button"
@@ -54,7 +55,7 @@ export function CartView({
                     <span>{x.qty}</span>
                     <button
                       type="button"
-                      disabled={x.qty===10}
+                      disabled={x.qty===50}
                       aria-label={locale==='ar'?`زيادة كمية ${x.product.nameAr}`:`Increase ${x.product.name} quantity`}
                       onClick={() => cart.update(x.id, x.size, x.qty + 1)}
                     >
@@ -103,11 +104,11 @@ export function CheckoutView({ locale }: { locale: Locale }) {
   const [orderNumber, setOrderNumber] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [method, setMethod] = useState<"knet"|"stripe"|"cod">("knet");
+  const [method, setMethod] = useState<"knet"|"stripe"|"tap"|"cod">("knet");
   const [idempotencyKey,setIdempotencyKey]=useState("");
   const [promotionCode,setPromotionCode]=useState(()=>typeof window==="undefined"?"":localStorage.getItem("giant-promo-code")||"");
-  const [payments,setPayments]=useState({myFatoorahEnabled:true,stripeEnabled:false,codEnabled:true,standardDeliveryFils:2000,sameDayDeliveryFils:3500,sameDayCutoff:"14:00",codFeeFils:0,reservationMinutes:30});
-  useEffect(()=>{fetch("/api/v1/content/settings").then(async response=>await response.json() as {data?:typeof payments}).then(payload=>{if(!payload.data)return;setPayments(payload.data);if(!payload.data.myFatoorahEnabled)setMethod(payload.data.stripeEnabled?"stripe":"cod")}).catch(()=>{})},[]);
+  const [payments,setPayments]=useState({myFatoorahEnabled:true,stripeEnabled:false,tapEnabled:false,tapApplePayEnabled:true,codEnabled:true,standardDeliveryFils:2000,sameDayDeliveryFils:3500,sameDayCutoff:"14:00",codFeeFils:0,reservationMinutes:30});
+  useEffect(()=>{fetch("/api/v1/content/settings").then(async response=>await response.json() as {data?:typeof payments}).then(payload=>{if(!payload.data)return;setPayments(payload.data);if(!payload.data.myFatoorahEnabled)setMethod(payload.data.tapEnabled?"tap":payload.data.stripeEnabled?"stripe":"cod")}).catch(()=>{})},[]);
   if (complete)
     return (
       <main className="order-success">
@@ -139,7 +140,8 @@ export function CheckoutView({ locale }: { locale: Locale }) {
           const form = new FormData(e.currentTarget);
           try {
             const key=idempotencyKey||crypto.randomUUID();setIdempotencyKey(key);
-            const endpoint=method==="stripe"?"/api/v1/payments/stripe/session":method==="knet"?"/api/v1/payments/myfatoorah/session":"/api/v1/orders";
+            sendMetaEvent('InitiateCheckout',{quantity:cart.lines.reduce((sum,line)=>sum+line.qty,0)});
+            const endpoint=method==="stripe"?"/api/v1/payments/stripe/session":method==="tap"?"/api/v1/payments/tap/session":method==="knet"?"/api/v1/payments/myfatoorah/session":"/api/v1/orders";
             const response = await fetch(endpoint, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -168,6 +170,7 @@ export function CheckoutView({ locale }: { locale: Locale }) {
             if (!response.ok)
               throw new Error(payload.message || "Order could not be created");
             if(method==="stripe"&&payload.data.url){window.location.assign(payload.data.url);return}
+            if(method==="tap"&&payload.data.url){window.location.assign(payload.data.url);return}
             if(method==="knet"&&payload.data.sessionId){window.location.assign(`/${locale}/checkout/myfatoorah?session_id=${encodeURIComponent(payload.data.sessionId)}`);return}
             setOrderNumber(payload.data.number);setComplete(true);cart.clear();
           } catch (error) {
@@ -266,6 +269,10 @@ export function CheckoutView({ locale }: { locale: Locale }) {
             {payments.stripeEnabled&&<label>
               <input type="radio" name="payment" checked={method === "stripe"} onChange={() => setMethod("stripe")}/>
               <span><b>STRIPE CHECKOUT</b><small>Cards, eligible wallets and 3-D Secure</small></span>
+            </label>}
+            {payments.tapEnabled&&<label>
+              <input type="radio" name="payment" checked={method === "tap"} onChange={() => setMethod("tap")}/>
+              <span><b>TAP PAYMENTS{payments.tapApplePayEnabled?' / APPLE PAY':''}</b><small>Secure hosted checkout powered by Tap</small></span>
             </label>}
             {payments.codEnabled&&<label>
               <input

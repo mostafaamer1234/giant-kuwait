@@ -25,7 +25,7 @@ export default async function OrderDetails({params}:{params:Promise<{id:string}>
         {order.lines?.length?order.lines.map(line=><div className="detail-line" key={`${line.productId}-${line.size??"default"}`}>
           <i style={{backgroundImage:line.image?`url(${line.image})`:undefined}} />
           <div><b>{line.name}</b><small>{line.color}{line.size?` · ${line.size}`:""} · SKU {line.sku}</small></div>
-          <span>QTY {line.quantity}</span><strong>{adminMoney(line.unitPrice*line.quantity)}</strong>
+          <span>QTY {line.quantity}{line.bundleLabel?` · ${line.bundleLabel}`:''}</span><strong>{adminMoney(line.lineTotal??line.unitPrice*line.quantity)}</strong>
         </div>):<div className="detail-empty"><b>Legacy order</b><p>This order predates line-item capture. Customer, total, status and timestamp remain available.</p></div>}
         <div className="detail-totals"><span>Subtotal <b>{adminMoney(order.subtotal??order.total-(order.delivery??0))}</b></span><span>Delivery <b>{adminMoney(order.delivery??0)}</b></span>{Boolean(order.discount)&&<span>Discount <b>−{adminMoney(order.discount??0)}</b></span>}<strong>Total <b>{adminMoney(order.total)}</b></strong></div>
       </section>

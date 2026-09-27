@@ -1,6 +1,6 @@
 # GIANT Kuwait Commerce
 
-A production-oriented bilingual activewear storefront and operations dashboard for Kuwait. It combines an English/Arabic customer experience, configurable catalog and content, size recommendations, Stripe and MyFatoorah integrations, receipt tooling, and a protected admin control panel.
+A production-oriented bilingual activewear storefront and operations dashboard for Kuwait. It combines an English/Arabic customer experience, configurable catalog and content, AI-assisted size recommendations, Stripe, MyFatoorah and Tap integrations, Meta campaign analytics, receipt tooling, and a protected admin control panel.
 
 Production: [giant-kw.com](https://giant-kw.com/en)
 
@@ -34,13 +34,13 @@ API contract: [giant-kw.com/openapi.json](https://giant-kw.com/openapi.json)
 - English and Arabic routes under `/en` and `/ar`, including RTL presentation.
 - Responsive homepage, categories, search, product detail, cart, checkout, account, and editorial pages.
 - KWD prices formatted to three decimal places; API money values use integer fils.
-- Product color variants, size and quantity controls, wishlist, recommendations, discounts, and stock-aware checkout.
+- Product color variants, multi-image galleries, size and quantity controls, configurable multi-buy packages, wishlist, recommendations, discounts, and stock-aware checkout.
 - Mobile navigation, language switching, cart status, WhatsApp support, and accessible controls.
 - Admin-configurable typography, colors, spacing, image proportions, homepage sections, header, catalog, PDP, and footer.
 
 ### Commerce operations
 
-- Product, inventory, customer, promotion, content, order, and receipt management.
+- Product, unlimited image, multi-buy package, inventory, customer, promotion, content, order, and receipt management.
 - Order and customer detail views with linked previews and operational status controls.
 - Promotion attribution for clicks, purchases, revenue, discounts, net sales, estimated costs, and profit.
 - Individual, combined, and separate-page receipt printing with date filters and bulk selection.
@@ -51,6 +51,7 @@ API contract: [giant-kw.com/openapi.json](https://giant-kw.com/openapi.json)
 
 - Stripe Checkout sessions and signed Stripe webhooks.
 - MyFatoorah v3 sessions, KNET/card/Apple Pay configuration, callbacks, and signed webhooks.
+- Tap hosted charges with direct server reconciliation and account-dependent Apple Pay availability.
 - Cash on delivery with a configurable fee.
 - Server-side totals, idempotency keys, promotion validation, and stock revalidation.
 - Payment methods remain unavailable until their server credentials and webhook secrets are configured.
@@ -70,7 +71,8 @@ API contract: [giant-kw.com/openapi.json](https://giant-kw.com/openapi.json)
 | Application | Next.js 16, React 19, TypeScript | Storefront, admin, REST handlers, server rendering |
 | Validation | Zod | Request parsing and validation boundaries |
 | Operations store | Private Vercel Blob | Catalog, inventory, orders, customers, content, settings, guides, audit data |
-| Payments | Stripe SDK, MyFatoorah REST API | Hosted checkout and webhook reconciliation |
+| Payments | Stripe SDK, MyFatoorah and Tap REST APIs | Hosted checkout and webhook reconciliation |
+| Campaign tracking | Meta Pixel and Conversions API | Deduplicated browser/server funnel attribution |
 | AI extraction | OpenAI Agents SDK | Optional multilingual sizing-language extraction |
 | Sizing authority | TypeScript calculator | Deterministic chart matching and measurement estimation |
 | Tests | Vitest | Pricing, payment, analytics, and sizing behavior |
@@ -153,18 +155,41 @@ Webhook: `https://your-domain.example/api/v1/webhooks/myfatoorah`
 
 Apple Pay and production KNET availability depend on provider approval and domain verification.
 
+### Tap Payments
+
+| Variable | Required when enabled | Description |
+| --- | --- | --- |
+| `TAP_SECRET_KEY` | Yes | Server-only Tap secret key |
+| `TAP_MERCHANT_ID` | Yes | Tap merchant identifier |
+
+Webhook: `https://your-domain.example/api/v1/webhooks/tap`
+
+Tap and Apple Pay availability depend on the merchant account, customer device, browser, and verified production domain.
+
+### Meta campaign tracking
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `NEXT_PUBLIC_META_PIXEL_ID` | Recommended | Browser Pixel identifier |
+| `META_PIXEL_ID` | Recommended | Server-side Pixel identifier |
+| `META_CONVERSIONS_API_TOKEN` | For CAPI | Server-only Conversions API token |
+| `META_GRAPH_API_VERSION` | No | Graph API version override |
+
+The browser Pixel and server event use the same event ID for Meta deduplication. Customer email and mobile values are normalized and SHA-256 hashed before CAPI delivery; raw identifiers and tokens are not stored in the analytics dashboard.
+
 ## Admin dashboard
 
 The protected `/admin` dashboard includes:
 
 - **Overview** — sales, products, customers, stock, recent orders, and health.
-- **Products** — bilingual product data, price, cost, image URL/upload, status, and inventory.
+- **Products** — bilingual product data, price, cost, unlimited URLs/uploads, primary-image ordering, multi-buy packages, status, and inventory.
 - **Inventory** — stock adjustments for the Kuwait warehouse.
 - **Orders** — fulfillment queue and full order details.
 - **Customers** — profiles, spend, linked orders, previews, and details.
 - **Promotions** — coupon configuration and attributed performance.
 - **Receipts** — date filters, selection, bulk actions, and print/PDF workflows.
 - **Payments** — provider readiness and payment controls.
+- **Meta analytics** — date-filtered funnel counts, CAPI delivery status, product performance, purchases, and tracked revenue.
 - **Website editor** — responsive previews and storefront-template controls.
 - **Content** — bilingual editorial pages and publishing.
 - **Sizing guides** — conventional measurement charts by category or product.

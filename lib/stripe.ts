@@ -1,6 +1,7 @@
 import "server-only";
 import Stripe from "stripe";
 import {readAdminStore,writeAdminStore,type AdminOrder} from "@/lib/admin-store";
+import {trackMetaEvent} from "@/lib/meta";
 
 export function getStripe(){const key=process.env.STRIPE_SECRET_KEY;if(!key)throw new Error("STRIPE_NOT_CONFIGURED");return new Stripe(key);}
 
@@ -20,7 +21,7 @@ export async function reconcileStripeSession(session:Stripe.Checkout.Session,eve
     const paidTotal=session.amount_total??order.total;const discount=Math.max(0,order.total-paidTotal);
     const orders=store.orders.map(item=>item.id===order.id?{...item,total:paidTotal,discount,paymentStatus:"paid" as const,status:item.status==="pending"?"processing" as const:item.status}:item);
     const customers=store.customers.map(customer=>customer.email.toLowerCase()===order.email.toLowerCase()?{...customer,spent:customer.spent+paidTotal,lastOrderAt:new Date().toISOString()}:customer);
-    const next=await writeAdminStore({...store,orders,customers},`Stripe payment confirmed (${eventType})`,order.number);return next.orders.find(item=>item.id===order.id)??null;
+    const next=await writeAdminStore({...store,orders,customers},`Stripe payment confirmed (${eventType})`,order.number);await trackMetaEvent({eventId:`purchase-${order.id}`,name:'Purchase',productId:order.lines?.[0]?.productId,productName:order.lines?.[0]?.name,quantity:order.lines?.reduce((sum,line)=>sum+line.quantity,0),valueFils:paidTotal,email:order.email,phone:order.mobile}).catch(()=>undefined);return next.orders.find(item=>item.id===order.id)??null;
   }
   if(eventType==="checkout.session.expired"||eventType==="checkout.session.async_payment_failed"){
     if(order.paymentStatus==="paid"||order.inventoryReleased)return order;

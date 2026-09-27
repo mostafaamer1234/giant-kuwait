@@ -6,6 +6,7 @@ import {AdminControlCenter,PaymentModule} from "@/components/AdminControlCenter"
 import {ReceiptModule} from "@/components/ReceiptModule";
 import {SizingGuideManager} from "@/components/SizingGuideManager";
 import {VisualSiteEditor} from "@/components/VisualSiteEditor";
+import {MetaDashboard} from "@/components/MetaDashboard";
 import type {
   AdminContent,
   AdminCustomer,
@@ -26,6 +27,7 @@ type Tab =
   | "Promotions"
   | "Receipts"
   | "Payments"
+  | "Meta analytics"
   | "Website editor"
   | "Content"
   | "Sizing guides"
@@ -39,6 +41,7 @@ const tabs: Tab[] = [
   "Promotions",
   "Receipts",
   "Payments",
+  "Meta analytics",
   "Website editor",
   "Content",
   "Sizing guides",
@@ -370,6 +373,7 @@ export function AdminConsole({
           />
         )}
         {tab === "Payments" && <PaymentModule settings={store.settings} />}
+        {tab === "Meta analytics" && <MetaDashboard />}
         {tab === "Receipts" && (
           <ReceiptModule orders={store.orders} products={store.products}/>
         )}
@@ -419,8 +423,12 @@ function newProduct(): ManagedProduct {
     price: 15000,
     image:
       "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1000&q=85",
+    images: [
+      "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1000&q=85",
+    ],
     imageAlt: "GIANT new product",
     sizes: ["XS", "S", "M", "L", "XL", "XXL"],
+    bundles: [],
     description: "Describe this product.",
     sizeGuideId: "men-tops",
     fitProfile: "regular",
@@ -444,6 +452,8 @@ function ProductEditor({
   const [uploadMessage,setUploadMessage]=useState("");
   const field = (key: keyof ManagedProduct, next: unknown) =>
     setValue((current) => ({ ...current, [key]: next }));
+  const images=Array.from(new Set([...(value.images||[]),value.image].filter(Boolean)));
+  function setImages(next:string[]){const clean=Array.from(new Set(next.map(item=>item.trim()).filter(Boolean)));setValue(current=>({...current,images:clean,image:clean[0]||''}))}
   return (
     <form
       className="record-editor"
@@ -451,6 +461,9 @@ function ProductEditor({
         event.preventDefault();
         onSave({
           ...value,
+          image: images[0]||value.image,
+          images,
+          bundles: (value.bundles||[]).filter(bundle=>bundle.quantity>1&&bundle.price>=0).sort((a,b)=>a.quantity-b.quantity),
           slug:
             value.slug || value.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
         });
@@ -526,19 +539,29 @@ function ProductEditor({
           <option>archived</option>
         </select>
       </label>
-      <label>
-        Image URL
-        <input
-          value={value.image}
-          onChange={(event) => field("image", event.target.value)}
+      <label className="wide">
+        Image URLs (one per line)
+        <textarea
+          value={images.join("\n")}
+          onChange={(event) => setImages(event.target.value.split("\n"))}
+          placeholder="https://…"
         />
       </label>
       <label className="product-upload">
-        Or upload product image
-        <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploading} onChange={async event=>{const file=event.target.files?.[0];if(!file)return;setUploading(true);setUploadMessage('Uploading…');try{const body=new FormData();body.append('file',file);const response=await fetch('/api/v1/admin/media',{method:'POST',body});const payload=await response.json() as {data?:{url:string};message?:string};if(!response.ok||!payload.data)throw new Error(payload.message||'Upload failed');field('image',payload.data.url);setUploadMessage('Image uploaded and selected.')}catch(reason){setUploadMessage(reason instanceof Error?reason.message:'Upload failed')}finally{setUploading(false)}}}/>
-        <small>{uploadMessage||'JPEG, PNG, WebP or AVIF · maximum 6 MB'}</small>
+        Upload product images
+        <input multiple type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploading} onChange={async event=>{const files=Array.from(event.target.files||[]);if(!files.length)return;setUploading(true);setUploadMessage(`Uploading 0 / ${files.length}…`);const uploaded:string[]=[];try{for(let index=0;index<files.length;index++){const body=new FormData();body.append('file',files[index]);const response=await fetch('/api/v1/admin/media',{method:'POST',body});const payload=await response.json() as {data?:{url:string};message?:string};if(!response.ok||!payload.data)throw new Error(payload.message||`Upload failed for ${files[index].name}`);uploaded.push(payload.data.url);setUploadMessage(`Uploading ${index+1} / ${files.length}…`)}setImages([...images,...uploaded]);setUploadMessage(`${uploaded.length} image${uploaded.length===1?'':'s'} uploaded.`)}catch(reason){if(uploaded.length)setImages([...images,...uploaded]);setUploadMessage(reason instanceof Error?reason.message:'Upload failed')}finally{setUploading(false);event.target.value=''}}}/>
+        <small>{uploadMessage||'Select any number of JPEG, PNG, WebP or AVIF files · maximum 6 MB each'}</small>
       </label>
-      <div className="product-upload-preview" style={{backgroundImage:`url(${value.image})`}} aria-label="Current product image preview"/>
+      <div className="product-image-manager wide">
+        {images.map((image,index)=><article key={image}><div style={{backgroundImage:`url(${image})`}} aria-label={`Product image ${index+1}`}/><span>{index===0?'PRIMARY':`IMAGE ${index+1}`}</span><button type="button" disabled={index===0} onClick={()=>setImages([image,...images.filter(item=>item!==image)])}>MAKE PRIMARY</button><button type="button" onClick={()=>setImages(images.filter(item=>item!==image))}>REMOVE</button></article>)}
+        {!images.length&&<p>Add at least one product image URL or upload a file.</p>}
+      </div>
+      <fieldset className="bundle-editor wide">
+        <legend>MULTI-BUY PACKAGES</legend>
+        <p>Set the total package price in fils. Example: quantity 2 at 10,000 fils means two items cost KWD 10.000 total.</p>
+        {(value.bundles||[]).map((bundle,index)=><div key={bundle.id}><input aria-label="Package label" value={bundle.label} placeholder="2-pack" onChange={event=>field('bundles',(value.bundles||[]).map((item,itemIndex)=>itemIndex===index?{...item,label:event.target.value}:item))}/><label>Quantity<input type="number" min="2" value={bundle.quantity} onChange={event=>field('bundles',(value.bundles||[]).map((item,itemIndex)=>itemIndex===index?{...item,quantity:Math.max(2,Number(event.target.value))}:item))}/></label><label>Total price (fils)<input type="number" min="0" value={bundle.price} onChange={event=>field('bundles',(value.bundles||[]).map((item,itemIndex)=>itemIndex===index?{...item,price:Math.max(0,Number(event.target.value))}:item))}/></label><button type="button" onClick={()=>field('bundles',(value.bundles||[]).filter((_,itemIndex)=>itemIndex!==index))}>REMOVE</button></div>)}
+        <button type="button" onClick={()=>field('bundles',[...(value.bundles||[]),{id:crypto.randomUUID(),label:`${(value.bundles?.length||0)+2}-pack`,quantity:(value.bundles?.length||0)+2,price:value.price*((value.bundles?.length||0)+2)}])}>+ ADD PACKAGE</button>
+      </fieldset>
       <label className="wide">
         Description
         <textarea

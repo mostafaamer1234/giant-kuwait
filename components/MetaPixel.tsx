@@ -1,0 +1,13 @@
+'use client';
+import Script from 'next/script';
+import Image from 'next/image';
+import {usePathname} from 'next/navigation';
+import {useEffect,useRef,useState} from 'react';
+
+declare global{interface Window{fbq?:((...args:unknown[])=>void)&{callMethod?:(...args:unknown[])=>void;queue?:unknown[][];loaded?:boolean;version?:string}}}
+type EventName='PageView'|'ViewContent'|'AddToCart'|'InitiateCheckout'|'Purchase';
+type EventData={productId?:string;productName?:string;quantity?:number;valueFils?:number};
+function cookie(name:string){return document.cookie.split('; ').find(row=>row.startsWith(`${name}=`))?.split('=').slice(1).join('=')}
+export function sendMetaEvent(name:EventName,data:EventData={}){if(typeof window==='undefined')return;const eventId=crypto.randomUUID();const pixelData:Record<string,unknown>={currency:'KWD'};if(data.valueFils!=null)pixelData.value=data.valueFils/1000;if(data.productId){pixelData.content_ids=[data.productId];pixelData.content_type='product'}if(data.productName)pixelData.content_name=data.productName;if(data.quantity)pixelData.num_items=data.quantity;window.fbq?.('track',name,pixelData,{eventID:eventId});void fetch('/api/v1/meta/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({eventId,name,sourceUrl:window.location.href,fbp:cookie('_fbp'),fbc:cookie('_fbc'),...data}),keepalive:true})}
+export function MetaPixel({pixelId}:{pixelId:string}){const pathname=usePathname();const [ready,setReady]=useState(false);const last=useRef('');useEffect(()=>{if(!ready||last.current===pathname)return;last.current=pathname;sendMetaEvent('PageView')},[pathname,ready]);if(!pixelId)return null;return <><Script id="meta-pixel" strategy="afterInteractive" onReady={()=>setReady(true)}>{`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${pixelId.replace(/[^0-9]/g,'')}');`}</Script><noscript><Image unoptimized height={1} width={1} style={{display:'none'}} alt="" src={`https://www.facebook.com/tr?id=${encodeURIComponent(pixelId)}&ev=PageView&noscript=1`}/></noscript></>}
+export function MetaProductView({product}:{product:{id:string;name:string;price:number}}){useEffect(()=>{sendMetaEvent('ViewContent',{productId:product.id,productName:product.name,valueFils:product.price})},[product.id,product.name,product.price]);return null}
