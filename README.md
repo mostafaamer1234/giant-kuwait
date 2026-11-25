@@ -1,12 +1,24 @@
 # GIANT Kuwait Commerce
 
+![CI](https://github.com/mostafaamer1234/giant-kuwait/actions/workflows/ci.yml/badge.svg)
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
+![Tests](https://img.shields.io/badge/vitest-19%20tests-6e9f18)
+
+| English storefront | Arabic (RTL) storefront | Mobile |
+|---|---|---|
+| ![English storefront](docs/screenshots/storefront-en.png) | ![Arabic storefront](docs/screenshots/storefront-ar.png) | ![Mobile storefront](docs/screenshots/mobile-en.png) |
+
+**At a glance**
+- Bilingual English/Arabic (RTL) storefront and protected admin dashboard: Next.js 16, React 19, strict TypeScript, Zod-validated REST API with an OpenAPI contract.
+- Payments through Stripe, MyFatoorah (KNET, Apple Pay) and Tap, with signed webhooks, idempotency keys and server-side totals.
+- AI size assistant: the OpenAI Agents SDK extracts sizing language, while a deterministic TypeScript calculator stays the sizing authority. It has its own eval suite in `evals/`.
+- Meta Pixel and Conversions API funnel tracking with browser/server event de-duplication and SHA-256-hashed customer identifiers.
+- CI runs typecheck, lint, unit tests and a production build on every PR.
+
 A production-oriented bilingual activewear storefront and operations dashboard for Kuwait. It combines an English/Arabic customer experience, configurable catalog and content, AI-assisted size recommendations, Stripe, MyFatoorah and Tap integrations, Meta campaign analytics, receipt tooling, and a protected admin control panel.
 
-Production: [giant-kw.com](https://giant-kw.com/en)
-
-Admin: [giant-kw.com/admin](https://giant-kw.com/admin)
-
-API contract: [giant-kw.com/openapi.json](https://giant-kw.com/openapi.json)
+Brand: [GIANT Kuwait](https://giant-kw.com). This repository is the custom Next.js commerce platform. Run it locally (see [Local setup](#local-setup)) for the storefront at `/en` and `/ar`, the admin at `/admin`, and the API contract at `/openapi.json`. The screenshots above come from a local production build.
 
 > The included catalog, sizing ranges, imagery, addresses, orders, and customers are demonstration data. Replace and validate them before processing real orders.
 
